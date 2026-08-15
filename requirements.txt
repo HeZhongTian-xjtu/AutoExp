@@ -1,5 +1,5 @@
 # AutoExp runtime, Web/API, orchestration, tracking, and development dependencies.
-numpy==1.26.2
+numpy==2.2.6
 pandas==2.1.4
 PyYAML
 scikit-learn==1.5.0
