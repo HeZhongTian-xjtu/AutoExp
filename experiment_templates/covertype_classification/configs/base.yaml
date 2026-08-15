@@ -1,0 +1,6 @@
+seed: 42
+learning_rate: 0.03
+max_iter: 15
+max_leaf_nodes: 15
+min_samples_leaf: 40
+l2_regularization: 10.0

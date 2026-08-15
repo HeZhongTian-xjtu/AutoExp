@@ -1,0 +1,4 @@
+seed: 42
+C: 0.05
+max_iter: 80
+threshold: 0.5

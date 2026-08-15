@@ -1,0 +1,6 @@
+case_id: invalid-sklearn-parameter
+template_id: housing-regression-v1
+description: GradientBoostingRegressor receives a nonexistent parameter and fails before training.
+expected_failure: TEST_FAILED
+target_file: train.py
+fault_patch: fault.diff

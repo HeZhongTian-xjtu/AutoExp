@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+include requirements.txt
+recursive-include experiment_templates *.py *.yaml *.csv *.txt
+recursive-include repair_benchmarks *.yaml *.diff
+prune tests
+prune experiment_templates/*/tests
+global-exclude *.py[cod]
+global-exclude __pycache__/*

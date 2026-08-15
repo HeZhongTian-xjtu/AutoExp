@@ -1,0 +1,63 @@
+schema_version: '1.0'
+template_id: bank-marketing-classification-v1
+default_objective: Optimize a logistic classifier for identifying bank clients likely to subscribe to a term deposit from campaign features.
+default_hypothesis: Increasing classifier capacity and solver iterations will improve average precision, while the decision threshold remains an explicit policy parameter.
+display_name: Bank Marketing response classification
+description: Predict whether a client subscribes to a term deposit from campaign data.
+dataset_id: bank-marketing-v1
+builtin_dataset_path: datasets/builtin/bank-marketing-v1/data
+metric_name: average_precision
+metric_direction: maximize
+dataset_manifest: data/dataset_manifest.json
+dataset_contract:
+  task_type: tabular_binary_classification
+  required_files: [train.csv]
+  required_columns: [y]
+  target_column: y
+entrypoint: train.py
+evaluator_entrypoint: evaluator/evaluate.py
+metric_file: working/metrics.json
+allowed_files:
+  - configs/experiment.yaml
+  - train.py
+  - data/train.csv
+  - data/dataset_manifest.json
+  - evaluator/evaluate.py
+  - evaluator/__init__.py
+  - smoke.py
+mutable_files: [train.py]
+immutable_files:
+  - data/train.csv
+  - data/dataset_manifest.json
+  - evaluator/evaluate.py
+  - evaluator/__init__.py
+  - smoke.py
+allowed_imports: [os, json, pathlib, time, hashlib, numpy, pandas, yaml, sklearn]
+allowed_models: [one_hot_logistic_classifier_v1]
+default_parameters:
+  C: 0.01
+  max_iter: 80
+  threshold: 0.5
+baseline_parameters:
+  # Deliberately conservative baseline for a fresh optimization trajectory.
+  C: 0.001
+  max_iter: 50
+  threshold: 0.5
+parameter_policy:
+  C: {type: float, min: 0.001, max: 20.0, default: 0.01}
+  max_iter: {type: int, min: 50, max: 400, default: 80}
+  threshold: {type: float, min: 0.2, max: 0.8, default: 0.5}
+resource_policy:
+  timeout_seconds: 240
+  max_total_seconds: 1800
+  max_repairs_per_trial: 2
+  cpu_count: 2
+  memory_mb: 2048
+  pids_limit: 128
+  network: false
+validation:
+  pytest_command: [python, -m, pytest, tests, -q]
+  pytest_timeout_seconds: 60
+  smoke_command: [python, smoke.py]
+  smoke_timeout_seconds: 90
+  smoke_required_outputs: [working/metrics.json]

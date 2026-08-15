@@ -1,0 +1,70 @@
+schema_version: "1.0"
+template_id: text-classification-v1
+default_objective: Compare learning-rate, batch-size, dropout, LoRA-rank, and epoch settings for a compact text classifier on the embedded text dataset.
+default_hypothesis: A moderate learning rate with slightly larger capacity and limited regularization will improve macro-F1 over the deliberately weak baseline.
+dataset_contract:
+  task_type: text_classification
+  required_files: [train.csv]
+  target_column: label
+  text_column: text
+entrypoint: train.py
+metric_file: working/metrics.json
+allowed_files:
+  - configs/experiment.yaml
+  - train.py
+mutable_files:
+  - train.py
+immutable_files:
+  - configs/experiment.yaml
+allowed_imports:
+  - os
+  - json
+  - pathlib
+  - time
+  - numpy
+  - pandas
+  - yaml
+  - sklearn
+allowed_models:
+  - logistic_text_classifier_v1
+parameter_policy:
+  learning_rate:
+    type: float
+    min: 0.0001
+    max: 0.1
+    choices: [0.0005, 0.001, 0.005, 0.01]
+  batch_size:
+    type: int
+    choices: [4, 8, 16]
+  dropout:
+    type: float
+    min: 0.0
+    max: 0.5
+    choices: [0.0, 0.1, 0.2, 0.3]
+  lora_rank:
+    type: int
+    choices: [4, 8, 16, 32]
+  epochs:
+    type: int
+    min: 1
+    max: 5
+baseline_parameters:
+  # Minimal-capacity baseline used to make subsequent optimization visible.
+  learning_rate: 0.0005
+  batch_size: 4
+  dropout: 0.3
+  lora_rank: 4
+  epochs: 1
+resource_policy:
+  timeout_seconds: 120
+  cpu_count: 2
+  memory_mb: 2048
+  pids_limit: 128
+  network: false
+validation:
+  pytest_command: [python, -m, pytest, tests, -q]
+  pytest_timeout_seconds: 60
+  smoke_command: [python, train.py, --smoke]
+  smoke_timeout_seconds: 60
+  smoke_required_outputs:
+    - working/metrics.json
