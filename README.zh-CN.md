@@ -1,15 +1,15 @@
 # AutoExp
 
-<p align="center">
-  <a href="README.md">English</a> |
-  <a href="README.zh-CN.md">中文</a>
-</p>
-
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/Workflow-LangGraph-1F2937)
 ![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)
 ![Docker](https://img.shields.io/badge/Execution-Docker-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
+
+<p align="center">
+  <a href="https://github.com/HeZhongTian-xjtu/AutoExp?tab=readme-ov-file#english-documentation">English</a> |
+  <a href="https://github.com/HeZhongTian-xjtu/AutoExp/blob/main/README.zh-CN.md">中文</a>
+</p>
 
 > 一个面向透明、可复现、可检查优化流程的受控自主机器学习实验 Agent。
 
