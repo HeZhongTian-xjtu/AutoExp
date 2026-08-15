@@ -18,5 +18,5 @@ streamlit~=1.54.0
 backoff>=2.2
 rich>=13.7
 packaging>=23.0
-black==24.3.0
+black==26.5.1
 ruff==0.7.1
