@@ -61,6 +61,11 @@ section.stMain .block-container {
     color: var(--primary);
 }
 
+/* Keep the primary run action visually separate from the setup controls. */
+.autoexp-run-action-spacer {
+    height: 1.25rem;
+}
+
 /* Code block styling */
 .stCodeBlock {
     max-height: 400px;

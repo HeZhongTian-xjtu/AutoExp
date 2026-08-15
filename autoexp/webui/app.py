@@ -325,6 +325,10 @@ def _render_autoexp_panel_v2(self: AutoExpWebUI) -> None:
             tracker_mode="none",
         )
         dataset_id = _render_autoexp_dataset_selector(dataset_service)
+    st.markdown(
+        '<div class="autoexp-run-action-spacer" aria-hidden="true"></div>',
+        unsafe_allow_html=True,
+    )
     if st.button("Run AutoExp", type="primary", key="run_autoexp", width="stretch"):
         if not dataset_id:
             st.warning(
