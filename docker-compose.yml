@@ -1,0 +1,42 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    command: ["streamlit", "run", "autoexp/webui/app.py", "--server.address=0.0.0.0", "--server.port=8501"]
+    ports: ["8501:8501"]
+    env_file: [.env]
+    environment:
+      AUTOEXP_API_URL: http://api:8000
+    volumes: ["./workspaces:/app/workspaces"]
+    depends_on: [api]
+    restart: unless-stopped
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    ports: ["8000:8000"]
+    env_file: [.env]
+    environment:
+      AUTOEXP_REDIS_URL: redis://redis:6379/0
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_UI_URL: http://localhost:5000
+    volumes: ["./workspaces:/app/workspaces"]
+    depends_on: [redis, mlflow]
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: ["redis-data:/data"]
+    restart: unless-stopped
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "sqlite:////app/workspaces/mlflow.db", "--default-artifact-root", "/app/workspaces/mlartifacts"]
+    ports: ["5000:5000"]
+    volumes: ["./workspaces:/app/workspaces"]
+    restart: unless-stopped
+volumes:
+  redis-data:

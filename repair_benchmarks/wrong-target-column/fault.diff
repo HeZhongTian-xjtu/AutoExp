@@ -1,0 +1,11 @@
+--- a/train.py
++++ b/train.py
+@@ -78,7 +78,7 @@
+         frame = frame.head(160).copy()
+     seed = int(config['seed'])
+     features = frame.drop(columns=['SalePrice', 'Id'])
+-    target = np.log1p(frame['SalePrice'].astype(float).to_numpy())
++    target = np.log1p(frame['WrongPrice'].astype(float).to_numpy())
+     train_features, valid_features, train_target, _ = train_test_split(
+         features,
+         target,

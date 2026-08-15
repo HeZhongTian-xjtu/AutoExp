@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoexp"
+version = "0.1.0"
+description = "A controlled autonomous machine-learning experiment agent."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "numpy==1.26.2",
+  "pandas==2.1.4",
+  "PyYAML",
+  "scikit-learn==1.5.0",
+  "pydantic>=2.0",
+  "langgraph>=1.2.0,<2.0.0",
+  "langgraph-checkpoint-sqlite>=3.1.0,<4.0.0",
+  "fastapi>=0.115,<1.0",
+  "uvicorn[standard]>=0.30,<1.0",
+  "redis>=5.0,<7.0",
+  "rq>=2.0,<3.0",
+  "optuna>=4.0,<5.0",
+  "mlflow>=2.12,<4.0",
+  "openai>=1.69.0",
+  "python-dotenv>=1.0",
+  "streamlit~=1.54.0",
+  "backoff>=2.2",
+  "rich>=13.7",
+  "packaging>=23.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "black==24.3.0",
+  "ruff==0.7.1",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["autoexp*", "experiment_templates*"]
+exclude = ["tests*", "experiment_templates.*.tests*"]
+
+[tool.setuptools.package-data]
+experiment_templates = ["*/manifest.yaml", "*/smoke.py", "*/train.py", "*/configs/*.yaml", "*/evaluator/*.py", "*/data/*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["tests/*", "*/tests/*", "__pycache__/*", "*.pyc"]
+
+[tool.black]
+target-version = ["py310"]
+line-length = 88
+extend-exclude = '''
+/(\.git|\.venv|workspaces|datasets|mlruns|logs)/
+'''
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+extend-exclude = [".git", ".venv", "workspaces", "datasets", "mlruns", "logs"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+"autoexp/webui/app.py" = ["E402"]

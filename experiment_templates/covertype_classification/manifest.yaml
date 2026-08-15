@@ -1,0 +1,69 @@
+schema_version: '1.0'
+template_id: covertype-classification-v1
+default_objective: Optimize a histogram gradient-boosting classifier for seven-class forest cover prediction using cartographic features.
+default_hypothesis: More boosting iterations and leaf capacity with less regularization will improve macro-F1 over the shallow conservative baseline.
+display_name: Covertype multiclass classification
+description: Predict seven forest cover types from cartographic features.
+dataset_id: covertype-v1
+builtin_dataset_path: datasets/builtin/covertype-v1/data
+metric_name: macro_f1
+metric_direction: maximize
+dataset_manifest: data/dataset_manifest.json
+dataset_contract:
+  task_type: tabular_multiclass
+  required_files: [train.csv]
+  required_columns: [Cover_Type]
+  target_column: Cover_Type
+entrypoint: train.py
+evaluator_entrypoint: evaluator/evaluate.py
+metric_file: working/metrics.json
+allowed_files:
+  - configs/experiment.yaml
+  - train.py
+  - data/train.csv
+  - data/dataset_manifest.json
+  - evaluator/evaluate.py
+  - evaluator/__init__.py
+  - smoke.py
+mutable_files: [train.py]
+immutable_files:
+  - data/train.csv
+  - data/dataset_manifest.json
+  - evaluator/evaluate.py
+  - evaluator/__init__.py
+  - smoke.py
+allowed_imports: [os, json, pathlib, time, hashlib, numpy, pandas, yaml, sklearn]
+allowed_models: [hist_gradient_boosting_multiclass_v1]
+default_parameters:
+  learning_rate: 0.03
+  max_iter: 15
+  max_leaf_nodes: 15
+  min_samples_leaf: 40
+  l2_regularization: 10.0
+baseline_parameters:
+  # Small, shallow and heavily regularized starting point for every Run.
+  learning_rate: 0.01
+  max_iter: 10
+  max_leaf_nodes: 7
+  min_samples_leaf: 120
+  l2_regularization: 50.0
+parameter_policy:
+  learning_rate: {type: float, min: 0.01, max: 0.3, default: 0.03}
+  max_iter: {type: int, min: 10, max: 80, default: 15}
+  max_leaf_nodes: {type: int, min: 7, max: 63, default: 15}
+  min_samples_leaf: {type: int, min: 10, max: 120, default: 40}
+  l2_regularization: {type: float, min: 0.0, max: 50.0, default: 10.0}
+resource_policy:
+  timeout_seconds: 300
+  max_total_seconds: 1800
+  max_repairs_per_trial: 2
+  cpu_count: 2
+  memory_mb: 4096
+  pids_limit: 128
+  network: false
+validation:
+  pytest_command: [python, -m, pytest, tests, -q]
+  pytest_timeout_seconds: 60
+  smoke_command: [python, smoke.py]
+  smoke_timeout_seconds: 120
+  smoke_required_outputs: [working/metrics.json]

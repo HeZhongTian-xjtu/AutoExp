@@ -1,0 +1,6 @@
+learning_rate: 0.001
+batch_size: 8
+dropout: 0.1
+lora_rank: 8
+epochs: 3
+seed: 42

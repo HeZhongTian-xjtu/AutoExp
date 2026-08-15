@@ -1,0 +1,104 @@
+schema_version: '1.0'
+template_id: housing-regression-v1
+default_objective: Optimize a gradient-boosting regressor for log house-price prediction on Ames House Prices while preserving the fixed evaluator.
+default_hypothesis: Increasing model capacity and moving away from the underfit baseline will reduce validation log-RMSE without overfitting under the fixed split.
+dataset_id: ames-house-prices-v1
+metric_name: rmse_log
+metric_direction: minimize
+dataset_manifest: data/dataset_manifest.json
+dataset_contract:
+  task_type: tabular_regression
+  required_files: [train.csv]
+  optional_files: [test.csv, data_description.txt]
+  required_columns: [Id, SalePrice]
+  target_column: SalePrice
+entrypoint: train.py
+metric_file: working/metrics.json
+evaluator_entrypoint: evaluator/evaluate.py
+allowed_files:
+  - configs/experiment.yaml
+  - configs/base.yaml
+  - train.py
+  - data/train.csv
+  - data/test.csv
+  - data/dataset_manifest.json
+  - evaluator/evaluate.py
+  - evaluator/__init__.py
+  - smoke.py
+mutable_files:
+  - train.py
+  - configs/base.yaml
+immutable_files:
+  - data/train.csv
+  - data/test.csv
+  - data/dataset_manifest.json
+  - evaluator/evaluate.py
+  - evaluator/__init__.py
+  - smoke.py
+allowed_imports:
+  - os
+  - hashlib
+  - json
+  - pathlib
+  - time
+  - numpy
+  - pandas
+  - yaml
+  - sklearn
+allowed_models:
+  - gradient_boosting_regressor_v1
+default_parameters:
+  # Deliberately underfit baseline for the continuous-optimization experiment.
+  learning_rate: 0.001
+  n_estimators: 30
+  max_depth: 1
+  min_samples_leaf: 20
+  subsample: 0.5
+baseline_parameters:
+  # Every new Run starts here; later Trials may move beyond this weak point.
+  learning_rate: 0.001
+  n_estimators: 30
+  max_depth: 1
+  min_samples_leaf: 20
+  subsample: 0.5
+parameter_policy:
+  learning_rate:
+    type: float
+    min: 0.001
+    max: 0.2
+    default: 0.001
+  n_estimators:
+    type: int
+    min: 30
+    max: 200
+    default: 30
+  max_depth:
+    type: int
+    min: 1
+    max: 6
+    default: 1
+  min_samples_leaf:
+    type: int
+    min: 1
+    max: 20
+    default: 20
+  subsample:
+    type: float
+    min: 0.5
+    max: 1.0
+    default: 0.5
+resource_policy:
+  timeout_seconds: 120
+  max_total_seconds: 1800
+  max_repairs_per_trial: 2
+  cpu_count: 2
+  memory_mb: 2048
+  pids_limit: 128
+  network: false
+validation:
+  pytest_command: [python, -m, pytest, tests, -q]
+  pytest_timeout_seconds: 60
+  smoke_command: [python, smoke.py]
+  smoke_timeout_seconds: 90
+  smoke_required_outputs:
+    - working/metrics.json

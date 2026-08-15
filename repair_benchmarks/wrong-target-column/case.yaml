@@ -1,0 +1,6 @@
+case_id: wrong-target-column
+template_id: housing-regression-v1
+description: Training reads an invalid target column while the immutable dataset contract still requires SalePrice.
+expected_failure: TEST_FAILED
+target_file: train.py
+fault_patch: fault.diff

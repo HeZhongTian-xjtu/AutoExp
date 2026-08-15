@@ -1,0 +1,1 @@
+'"""Built-in AutoExp experiment template resources."""`r`n'
