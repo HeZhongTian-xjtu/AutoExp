@@ -19,4 +19,4 @@ backoff>=2.2
 rich>=13.7
 packaging>=23.0
 black==24.3.0
-ruff==0.7.1
+ruff==0.16.2
