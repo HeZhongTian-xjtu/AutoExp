@@ -187,6 +187,9 @@ logs
 /experiment_templates/*/data/*.json
 /tests/
 /experiment_templates/*/tests/
+!/experiment_templates/*/tests/
+!/experiment_templates/*/tests/test_contract.py
+/experiment_templates/*/tests/__pycache__/
 /pytest.ini
 /.github/workflows/tests.yml
 /test-results/
