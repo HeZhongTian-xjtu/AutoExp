@@ -195,10 +195,53 @@ AutoExp 通过 OpenAI SDK 协议调用模型，可接入 OpenAI、DeepSeek 及�
 
 评估选用 Housing、Covertype、Bank Marketing 和 Online Shoppers 四个正式任务，在相同的参数空间、较弱基线和五个随机种子（`42`-`46`）下比较 Random Search、Optuna 与 AutoExp LLM。Text Classification 不参与正式评估；Code Repair 关闭，因此结果只反映参数优化能力。每种 Trial 预算包含 60 个 Run，全部成功完成。
 
-| 单次 Run 的 Trial 数 | Random 胜场 | Optuna 胜场 | AutoExp LLM 胜场 | 平均排名（R / O / LLM） | 平均耗时（R / O / LLM） |
-| ---: | ---: | ---: | ---: | ---: | ---: |
-| 2 | 5/20（25%） | 7/20（35%） | **8/20（40%）** | 2.40 / **1.80** / **1.80** | 21.36 秒 / 22.70 秒 / 28.57 秒 |
-| 6 | 4/20（20%） | 5/20（25%） | **11/20（55%）** | 2.30 / 2.05 / **1.65** | 74.02 秒 / 76.62 秒 / 137.33 秒 |
+<table>
+  <thead>
+    <tr>
+      <th rowspan="2">方法</th>
+      <th colspan="2">胜场</th>
+      <th colspan="2">平均排名</th>
+      <th colspan="2">平均耗时</th>
+    </tr>
+    <tr>
+      <th>2 Trials</th>
+      <th>6 Trials</th>
+      <th>2 Trials</th>
+      <th>6 Trials</th>
+      <th>2 Trials</th>
+      <th>6 Trials</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Random</td>
+      <td>5/20（25%）</td>
+      <td>4/20（20%）</td>
+      <td>2.40</td>
+      <td>2.30</td>
+      <td>21.36 秒</td>
+      <td>74.02 秒</td>
+    </tr>
+    <tr>
+      <td>Optuna</td>
+      <td>7/20（35%）</td>
+      <td>5/20（25%）</td>
+      <td>1.80</td>
+      <td>2.05</td>
+      <td>22.70 秒</td>
+      <td>76.62 秒</td>
+    </tr>
+    <tr>
+      <td>AutoExp LLM</td>
+      <td><strong>8/20（40%）</strong></td>
+      <td><strong>11/20（55%）</strong></td>
+      <td><strong>1.80</strong></td>
+      <td><strong>1.65</strong></td>
+      <td>28.57 秒</td>
+      <td>137.33 秒</td>
+    </tr>
+  </tbody>
+</table>
 
 2-Trial 任务结果（`均值 ± 样本标准差`）：
 

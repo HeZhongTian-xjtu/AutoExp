@@ -197,10 +197,53 @@ Uploaded datasets are validated, assigned a SHA-256 identity, and stored below `
 
 AutoExp was compared with Random Search and Optuna using the same four formal tasks, registered search spaces, weak baselines, five seeds (`42`-`46`), and Trial budgets. Text Classification was excluded. Code Repair was disabled so the comparison measures parameter optimization only; each budget contains 60 Runs, all of which completed successfully.
 
-| Trials per Run | Random wins | Optuna wins | AutoExp LLM wins | Mean rank (R / O / LLM) | Mean time (R / O / LLM) |
-| ---: | ---: | ---: | ---: | ---: | ---: |
-| 2 | 5/20 (25%) | 7/20 (35%) | **8/20 (40%)** | 2.40 / **1.80** / **1.80** | 21.36s / 22.70s / 28.57s |
-| 6 | 4/20 (20%) | 5/20 (25%) | **11/20 (55%)** | 2.30 / 2.05 / **1.65** | 74.02s / 76.62s / 137.33s |
+<table>
+  <thead>
+    <tr>
+      <th rowspan="2">Method</th>
+      <th colspan="2">Wins</th>
+      <th colspan="2">Mean rank</th>
+      <th colspan="2">Mean time</th>
+    </tr>
+    <tr>
+      <th>2 Trials</th>
+      <th>6 Trials</th>
+      <th>2 Trials</th>
+      <th>6 Trials</th>
+      <th>2 Trials</th>
+      <th>6 Trials</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Random</td>
+      <td>5/20 (25%)</td>
+      <td>4/20 (20%)</td>
+      <td>2.40</td>
+      <td>2.30</td>
+      <td>21.36s</td>
+      <td>74.02s</td>
+    </tr>
+    <tr>
+      <td>Optuna</td>
+      <td>7/20 (35%)</td>
+      <td>5/20 (25%)</td>
+      <td>1.80</td>
+      <td>2.05</td>
+      <td>22.70s</td>
+      <td>76.62s</td>
+    </tr>
+    <tr>
+      <td>AutoExp LLM</td>
+      <td><strong>8/20 (40%)</strong></td>
+      <td><strong>11/20 (55%)</strong></td>
+      <td><strong>1.80</strong></td>
+      <td><strong>1.65</strong></td>
+      <td>28.57s</td>
+      <td>137.33s</td>
+    </tr>
+  </tbody>
+</table>
 
 Two-Trial task results (`mean +/- sample standard deviation`):
 
