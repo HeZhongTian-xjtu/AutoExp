@@ -193,6 +193,8 @@ logs
 /test_outputs/
 /test_artifacts/
 /benchmark_outputs/
+# Local Agent evaluation harness and generated benchmark results.
+/benchmarks/
 /artifacts/
 /outputs/
 **/.progress/

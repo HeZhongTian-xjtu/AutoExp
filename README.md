@@ -12,118 +12,78 @@
 </p>
 
 <a id="english-documentation"></a>
-> A controlled autonomous machine-learning experiment agent built for transparent, reproducible, and inspectable optimization.
 
-## Demo
+> A controlled machine-learning experiment agent for planning, running, improving, and auditing reproducible experiments.
 
 ![AutoExp run demo](docs/assets/autoexp-demo.gif)
 
-AutoExp turns a research objective and hypothesis into a bounded machine-learning experiment loop. An LLM or deterministic planner produces a structured experiment specification, the system validates it against a registered template, executes controlled trials, evaluates fixed metrics, and lets an action planner decide whether to continue, narrow the search space, repair code, stop, or request human review.
+AutoExp turns a research objective and hypothesis into a bounded experiment loop. An LLM creates a structured experiment plan, LangGraph coordinates Trial execution and result-driven decisions, and deterministic guards validate every parameter, patch, metric, and artifact.
 
-The project is designed as an engineering and research portfolio project. Its focus is not unrestricted code generation; its focus is making Agent decisions, code changes, experiment state, metrics, failures, and artifacts explicit and auditable.
+The project is intentionally constrained. Model-generated decisions are separated from trusted evaluation, resource limits, persistence, and code-validation gates so that an experiment can be inspected and reproduced instead of treated as an opaque chat session.
 
-**Current status:** the local Web/CLI workflow, LangGraph state machine, SQLite persistence, Docker trial isolation, Repair gates, MLflow integration, background-task API, and reproducible optimization benchmarks are implemented. Public deployment hardening remains intentionally out of scope for the current release.
+## Core Capabilities
 
-## Why AutoExp
-
-A useful experiment agent needs more than an LLM call followed by `python train.py`. AutoExp separates probabilistic model decisions from deterministic enforcement:
-
-| LLM or policy component | Deterministic system boundary |
-| --- | --- |
-| Propose an `ExperimentSpec` | Validate it against the template manifest and resource budget |
-| Select the next parameters | Reject unknown, duplicated, or out-of-policy values |
-| Propose a Unified Diff repair | Enforce file allowlists, patch context, AST, dependency, Pytest, and Smoke gates |
-| Interpret trial observations | Compute metrics with a fixed evaluator and immutable dataset identity |
-| Generate a human-readable summary | Persist the complete run, decisions, failures, and artifacts independently |
-
-This boundary makes the result reproducible enough for comparison while still demonstrating structured LLM planning, function-style outputs, stateful Agent control, automatic experimentation, and code repair.
-
-## Highlights
-
-- **LangGraph orchestration** with explicit nodes, conditional routing, SQLite checkpoints, resume, and human-review interrupts.
-- **Structured planning** that converts an objective and hypothesis into a validated Pydantic `ExperimentSpec`.
-- **Result-conditioned actions**: `CONTINUE`, `NARROW_SPACE`, `REPAIR`, `STOP`, and `HUMAN_REVIEW`.
-- **Controlled Code Agent** that collects failure context, generates allowlisted Unified Diff patches, rejects duplicate failures, and preserves Repair artifacts.
-- **Execution gates** in the order `AST/dependency -> Pytest -> Smoke -> formal experiment`.
-- **Local and Docker executors** behind one execution protocol.
-- **Docker isolation** with no network, non-root execution, read-only container root, dropped capabilities, CPU/memory/PID limits, and immutable file mounts.
-- **Dataset registry** for uploaded datasets, compatibility checks, SHA-256 identity, local previews, and immutable staging.
-- **SQLite and artifact persistence** for runs, trials, decisions, events, reports, patches, logs, and resumable state.
-- **Optional MLflow tracking** with an aggregate parent run and per-trial child runs; SQLite remains authoritative.
-- **Unified Web and CLI core** through `AutoExpApplicationService` and the same LangGraph workflow.
-- **FastAPI + Redis/RQ + SSE control plane** for queued long-running experiments and progress events.
-- **Reproducible benchmarks** for Random, Optuna, and LLM parameter policies, plus controlled Repair cases.
-- **Deterministic report and optional AI Run Summary** without hiding the underlying trial details.
+- **Stateful orchestration:** LangGraph nodes, conditional routing, checkpoints, resume, and persisted human-review interrupts.
+- **Structured planning:** Pydantic `ExperimentSpec` outputs for objectives, hypotheses, metrics, budgets, and initial parameters.
+- **Closed-loop optimization:** the Action Planner can continue, narrow the search, repair code, stop, or request review after each Trial.
+- **Guarded Code Repair:** allowlisted Unified Diff patches pass context validation, AST/dependency checks, Pytest, and Smoke gates before execution.
+- **Controlled execution:** Local and Docker executors share one protocol; Docker applies network, privilege, CPU, memory, PID, and timeout restrictions.
+- **Fixed evaluation:** immutable dataset identity and template-owned evaluators prevent generated code from redefining the success metric.
+- **Persistent evidence:** SQLite stores Runs, Trials, decisions, and events; artifacts store reports, logs, patches, predictions, and evaluator outputs.
+- **One execution core:** Streamlit, CLI, FastAPI, and the RQ worker call the same application service and LangGraph workflow.
+- **Optional integrations:** OpenAI-compatible model providers, MLflow experiment tracking, Redis/RQ background jobs, and SSE progress events.
 
 ## Workflow
 
 ```mermaid
-flowchart TD
-    A[Research objective and hypothesis] --> B[Structured Planner]
-    B --> C{ExperimentSpec valid?}
-    C -- No --> Z[Fail with validation issues]
-    C -- Yes --> D[Snapshot weak baseline]
-    D --> E[Select candidate parameters]
-    E --> F[Prepare isolated trial workspace]
-    F --> G[AST and dependency preflight]
-    G --> H[Pytest gate]
-    H --> I[Smoke gate]
-    I --> J[Formal experiment]
-    J --> K[Fixed evaluator and metrics]
-    K --> L[Build observation]
-    L --> M[Action Planner]
-    M -- CONTINUE --> E
-    M -- NARROW_SPACE --> E
-    M -- REPAIR --> N[Validate and apply Unified Diff]
-    N --> G
-    M -- HUMAN_REVIEW --> O[Persist interrupt and await command]
-    M -- STOP --> P[Report, artifacts, and final state]
-    O --> M
+flowchart LR
+    A[Objective and hypothesis] --> B[Structured Planner]
+    B --> C[Validated ExperimentSpec]
+    C --> D[Candidate parameters]
+    D --> E[AST, Pytest, and Smoke gates]
+    E --> F[Isolated experiment]
+    F --> G[Fixed evaluator]
+    G --> H[Observation]
+    H --> I{Action Planner}
+    I -->|Continue or narrow| D
+    I -->|Repair| J[Validate and apply patch]
+    J --> E
+    I -->|Human review| K[Persist interrupt]
+    K --> I
+    I -->|Stop| L[Report and artifacts]
 ```
 
-A run is bounded by maximum trials, per-trial timeout, total elapsed time, Repair count, template parameter policy, and executor resource limits. Every transition is represented in persisted graph state or the run event timeline.
+A Run is bounded by its Trial count, elapsed-time budget, per-Trial timeout, Repair limit, template policy, and executor resources. The graph state and event timeline record every transition.
 
 ## Architecture
 
-The LangGraph workflow is the canonical execution path. Streamlit, CLI, FastAPI, and the RQ worker all enter through the same application service.
-
 ```text
-Web / CLI / API / Worker
-        |
-        v
-AutoExpApplicationService
-        |
-        +-- Planner and Action Planner
-        +-- LangGraphExperimentOrchestrator
-        |       +-- graph state and checkpoints
-        |       +-- budget and action routing
-        |       +-- Repair and human review
-        |
-        +-- TrialRunner
-        |       +-- preflight and validation gates
-        |       +-- LocalExecutor / DockerExecutor
-        |       +-- fixed evaluator and metrics
-        |
-        +-- SQLiteRepository / ArtifactStore / MLflowTracker
-        +-- ReportBuilder / optional RunSummaryGenerator
+Streamlit / CLI / FastAPI / RQ Worker
+                  |
+                  v
+       AutoExpApplicationService
+                  |
+                  v
+       LangGraph Experiment Agent
+        /          |           \
+   Planner     TrialRunner    Reporting
+                  |
+       Preflight -> Executor -> Evaluator
+                  |
+       SQLite / Artifacts / MLflow
 ```
 
 | Package | Responsibility |
 | --- | --- |
-| `autoexp/domain` | Experiment, action, observation, run, trial, dataset, Repair, and validation contracts |
-| `autoexp/application` | Application service, template/dataset catalogs, shared runtime mechanics, and trial coordination |
-| `autoexp/graph` | LangGraph nodes, state snapshots, routing, resume, Repair, and human interrupts |
-| `autoexp/planning` | Deterministic and LLM planners, Action Planner, policy fallback |
-| `autoexp/preflight`, `autoexp/validation` | AST/dependency checks and Pytest/Smoke gate pipeline |
-| `autoexp/execution` | Local and resource-limited Docker execution |
-| `autoexp/evaluation` | Dataset integrity, profiling, fixed metrics, and evaluator contracts |
-| `autoexp/persistence` | SQLite repository and content-addressed run artifacts |
-| `autoexp/tracking` | Optional MLflow tracking and failure spool |
-| `autoexp/reporting` | Deterministic report and optional AI Run Summary |
-| `autoexp/server` | FastAPI, task store, Redis/RQ worker, cancellation, and SSE |
-| `autoexp/webui` | Streamlit setup, progress, history, run details, and dataset management |
-
-The former imperative orchestrator is retained only as a compatibility implementation. New user-facing code should call `AutoExpApplicationService`; new persisted models should be imported from `autoexp.domain`.
+| `autoexp/application` | Shared application service, catalogs, runtime assembly, and Trial coordination |
+| `autoexp/domain` | Stable schemas for experiments, actions, observations, Runs, Trials, datasets, and Repairs |
+| `autoexp/graph` | Canonical LangGraph state, nodes, routing, checkpoints, resume, and interrupts |
+| `autoexp/planning` | Initial Planner, Action Planner, candidate policies, and deterministic fallback |
+| `autoexp/preflight`, `autoexp/validation` | Static checks and the AST -> Pytest -> Smoke gate pipeline |
+| `autoexp/execution`, `autoexp/evaluation` | Local/Docker execution, dataset integrity, fixed metrics, and evaluators |
+| `autoexp/persistence`, `autoexp/tracking` | SQLite, content-addressed artifacts, and optional MLflow tracking |
+| `autoexp/repair`, `autoexp/reporting` | Repair context and patch validation, deterministic reports, and optional AI summaries |
+| `autoexp/server`, `autoexp/webui` | FastAPI/RQ/SSE services and the Streamlit interface |
 
 ## Quick Start
 
@@ -131,44 +91,20 @@ The former imperative orchestrator is retained only as a compatibility implement
 
 - Python 3.10 or 3.11
 - Docker Desktop or Docker Engine for isolated execution
-- An OpenAI-compatible API key only when using the LLM planner, LLM Action Planner, AI Summary, or LLM Repair
-- Redis only when using background tasks
+- An OpenAI-compatible API key for LLM planning, AI summaries, or LLM Repair
+- Redis only when background jobs are enabled
 
 ### Install
 
-Windows PowerShell:
-
 ```powershell
+git clone https://github.com/HeZhongTian-xjtu/AutoExp.git
+cd AutoExp
 py -3.10 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Linux or macOS:
-
-```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-`requirements.txt` is the single maintained dependency manifest for the core runtime, Web/API services, OpenAI-compatible integrations, Redis/RQ, Optuna, and MLflow.
-
-### Run an offline experiment
-
-No API key is required for deterministic planning:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\run_autoexp_demo.py `
-  --template housing-regression-v1 `
-  --planner deterministic `
-  --executor local `
-  --tracker none `
-  --trials 2
-```
-
-The command prints the structured run summary and writes runtime data under `workspaces/`.
+On Linux or macOS, create a Python 3.10+ virtual environment and replace the Windows executable path with `python`.
 
 ### Start the Web UI
 
@@ -176,17 +112,51 @@ The command prints the structured run summary and writes runtime data under `wor
 .\.venv\Scripts\python.exe -m streamlit run autoexp\webui\app.py
 ```
 
-Open `http://localhost:8501`. The UI provides experiment configuration, template and dataset selection, trial progress, history, complete run details, artifacts, reports, and an optional AI Run Summary.
+Open `http://localhost:8501`, choose an experiment template, and register a compatible `train.csv` in the Dataset panel. Use Local execution only for trusted development code.
 
-The UI defaults to Docker execution and MLflow tracking unless overridden by environment variables. Build the runner image and start Docker before using those defaults, or select Local/SQLite-only for development.
+For isolated Trials, build the runner image before selecting Docker in the UI:
 
-## LLM Configuration
+```powershell
+docker build -f Dockerfile.autoexp -t autoexp-runner:latest .
+```
 
-Copy the example environment file and fill in your own secret:
+### Run from the CLI
+
+After registering a dataset through the Web UI, use its dataset ID with the shared CLI:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_autoexp_demo.py `
+  --template housing-regression-v1 `
+  --dataset-id YOUR_DATASET_ID `
+  --planner deterministic `
+  --executor local `
+  --tracker none `
+  --trials 2
+```
+
+Use `--planner llm --executor docker` for an LLM-planned isolated Run. CLI and Web results use the same service, graph, persistence model, and evaluator contracts.
+
+### Start the Service Stack
 
 ```powershell
 Copy-Item .env.example .env
+docker build -f Dockerfile.autoexp -t autoexp-runner:latest .
+docker compose up -d --build
+.\.venv\Scripts\python.exe -m autoexp.server.worker
 ```
+
+| Service | Address |
+| --- | --- |
+| Streamlit | `http://localhost:8501` |
+| FastAPI | `http://localhost:8000` |
+| MLflow | `http://localhost:5000` |
+| Redis | `localhost:6379` |
+
+The RQ worker should run only on a trusted host with Docker access. The Compose file is a local integration environment, not a hardened public deployment.
+
+## Model Configuration
+
+Copy `.env.example` to `.env` and configure an OpenAI-compatible endpoint:
 
 ```dotenv
 OPENAI_API_KEY=your-api-key
@@ -194,362 +164,117 @@ OPENAI_BASE_URL=https://api.deepseek.com
 AUTOEXP_PLANNER_MODEL=deepseek-v4-flash
 ```
 
-AutoExp uses the OpenAI SDK contract, so OpenAI, DeepSeek, and compatible relay endpoints can be configured through the same variables. `.env` is ignored by Git and must never be committed.
+AutoExp uses the OpenAI SDK contract and supports OpenAI, DeepSeek, and compatible gateways. `.env` is ignored by Git; never commit credentials.
 
-Run the LLM planner with isolated execution:
+Common runtime settings include:
 
-```powershell
-docker build -f Dockerfile.autoexp -t autoexp-runner:latest .
+| Variable | Purpose |
+| --- | --- |
+| `AUTOEXP_PLANNER_MODE` | `deterministic`, `llm`, or `auto` planning |
+| `AUTOEXP_EXECUTOR` | `local` or `docker` Trial execution |
+| `AUTOEXP_TRACKER` | `none` or `mlflow` tracking |
+| `AUTOEXP_DB_PATH` | SQLite Run database |
+| `AUTOEXP_ARTIFACT_ROOT` | Run artifact directory |
+| `AUTOEXP_API_TOKEN` | Optional FastAPI bearer token |
 
-.\.venv\Scripts\python.exe scripts\run_autoexp_demo.py `
-  --template housing-regression-v1 `
-  --planner llm `
-  --executor docker `
-  --tracker mlflow `
-  --trials 3
-```
+## Tasks and Datasets
 
-Important configuration variables:
+Each experiment template defines its metric, parameter policy, weak baseline, mutable files, evaluator, validation commands, and resource limits.
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | OpenAI-compatible provider secret | unset |
-| `OPENAI_BASE_URL` | Provider base URL | provider SDK default |
-| `AUTOEXP_PLANNER_MODEL` | Planner, Action Planner, and Repair model | `deepseek-v4-flash` |
-| `AUTOEXP_REPORT_MODEL` | Optional AI Summary model | planner model |
-| `AUTOEXP_PLANNER_MODE` | `deterministic`, `llm`, or `auto` | `deterministic` |
-| `AUTOEXP_EXECUTOR` | `local` or `docker` | `local` in the service factory |
-| `AUTOEXP_DOCKER_IMAGE` | Trial runner image | `autoexp-runner:latest` |
-| `AUTOEXP_TRACKER` | `none` or `mlflow` | `none` in the service factory |
-| `AUTOEXP_DB_PATH` | Run SQLite database | `workspaces/autoexp.sqlite3` |
-| `AUTOEXP_ARTIFACT_ROOT` | Artifact directory | `workspaces/autoexp-artifacts` |
-| `AUTOEXP_CHECKPOINT_DB_PATH` | LangGraph checkpoint database | derived from the run database |
-| `MLFLOW_TRACKING_URI` | MLflow backend | `sqlite:///./workspaces/mlflow.db` |
-| `AUTOEXP_API_TOKEN` | Optional bearer token for the FastAPI control plane | unset |
-| `AUTOEXP_MAX_CONCURRENT_RUNS` | Queue admission limit | `2` |
-| `AUTOEXP_JOB_TIMEOUT` | RQ job timeout in seconds | `3600` |
-| `AUTOEXP_REDIS_URL` | Redis connection URL | `redis://localhost:6379/0` |
-
-## Experiment Templates and Datasets
-
-Templates are versioned experiment contracts. Each template owns its parameter policy, weak baseline, resource limits, mutable/immutable files, validation commands, fixed evaluator, metric direction, and dataset compatibility rules.
-
-| Template ID | Task contract | Dataset ID | Metric | Direction |
-| --- | --- | --- | --- | --- |
-| `housing-regression-v1` | Ames house-price regression | `ames-house-prices-v1` | `rmse_log` | minimize |
-| `covertype-classification-v1` | Seven-class forest cover prediction | `covertype-v1` | `macro_f1` | maximize |
-| `bank-marketing-classification-v1` | Term-deposit response prediction | `bank-marketing-v1` | `average_precision` | maximize |
-| `online-shoppers-classification-v1` | Purchase-intention prediction | `online-shoppers-v1` | `average_precision` | maximize |
-| `text-classification-v1` | Small compatibility text demo | `embedded-text-v1` | `macro_f1` | maximize |
-
-The first three templates form the fixed Phase 1 optimization benchmark. Online Shoppers is an additional challenge task. Text Classification is retained as a small compatibility task and should not be presented as a full-scale deep-learning experiment.
-
-### Dataset use and upload policy
-
-The public repository does not distribute third-party dataset files. Every run
-uses a dataset registered through the Dataset Catalog upload flow. This keeps
-the repository small, avoids silently redistributing competition data, and
-allows users to accept the source terms that apply to the copy they use.
-
-AutoExp uses uploaded datasets only as local inputs for the selected machine-
-learning benchmark and fixed evaluator. The project does not claim ownership
-of third-party data. Users are responsible for obtaining the data lawfully,
-following the source terms, and preserving the required attribution.
-
-### Dataset provenance
-
-The table below records the official source, licensing context, and upload
-contract for every supported dataset. Source links document provenance; they
-do not replace the source terms or permission requirements.
-
-| Dataset ID | Official source | License / terms | Local representation |
+| Template | Dataset and source | Required target | Metric |
 | --- | --- | --- | --- |
-| `ames-house-prices-v1` | [Kaggle House Prices competition](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data) | MIT is listed on the data page; review the competition rules before redistribution | Upload `train.csv` with `Id` and `SalePrice`; optional `test.csv` |
-| `bank-marketing-v1` | [UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank%2Bmarketing) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Upload `train.csv` with target column `y` and preserve UCI attribution |
-| `covertype-v1` | [UCI Covertype](https://archive.ics.uci.edu/dataset/31/covertype) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Upload `train.csv` with target column `Cover_Type` and preserve UCI attribution |
-| `online-shoppers-v1` | [UCI Online Shoppers Purchasing Intention](https://archive.ics.uci.edu/dataset/468/online%20shoppers%20purchasing%20intention%20dataset) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Upload `train.csv` with target column `Revenue` and preserve UCI attribution |
-| `embedded-text-v1` | Repository-generated compatibility task | AutoExp MIT license | Upload `train.csv` with `text` and `label` columns |
+| `housing-regression-v1` | [Kaggle House Prices](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/data) | `SalePrice` | RMSE-log, minimize |
+| `covertype-classification-v1` | [UCI Covertype](https://archive.ics.uci.edu/dataset/31/covertype) | `Cover_Type` | Macro-F1, maximize |
+| `bank-marketing-classification-v1` | [UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank%2Bmarketing) | `y` | Average precision, maximize |
+| `online-shoppers-classification-v1` | [UCI Online Shoppers](https://archive.ics.uci.edu/dataset/468/online%20shoppers%20purchasing%20intention%20dataset) | `Revenue` | Average precision, maximize |
+| `text-classification-v1` | User-provided compatibility dataset | `text`, `label` | Macro-F1, maximize |
 
-After upload, AutoExp writes a manifest containing the dataset ID, row count,
-and SHA-256 identity. Registered copies are stored below `workspaces/datasets/`
-and are intentionally ignored by Git.
+The repository contains task contracts and provenance information, not third-party dataset files. Users must obtain data from the original source, follow its terms, and upload a compatible copy. UCI datasets listed above use CC BY 4.0; Kaggle data remains subject to its data page and competition rules.
 
-### Dataset layout
+Uploaded datasets are validated, assigned a SHA-256 identity, and stored below `workspaces/datasets/`. Runtime datasets, databases, logs, checkpoints, and artifacts are excluded from Git.
 
-```text
-datasets/
-  sources/                       # optional maintainer-only downloads; ignored by Git
-    bank_marketing/
-    covertype/
-    online_shoppers/
-  builtin/                       # optional maintainer-only normalized assets; ignored by Git
-    bank-marketing-v1/data/
-    covertype-v1/data/
-    online-shoppers-v1/data/
+## Agent Evaluation
 
-experiment_templates/
-  */data/                        # optional local fixtures; ignored by public Git
+AutoExp was compared with Random Search and Optuna using the same four formal tasks, registered search spaces, weak baselines, five seeds (`42`-`46`), and Trial budgets. Text Classification was excluded. Code Repair was disabled so the comparison measures parameter optimization only; each budget contains 60 Runs, all of which completed successfully.
 
-workspaces/
-  datasets/                      # validated uploaded datasets
-  ...                            # runs, databases, checkpoints, and artifacts
-```
+| Trials per Run | Random wins | Optuna wins | AutoExp LLM wins | Mean rank (R / O / LLM) | Mean time (R / O / LLM) |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 2 | 5/20 (25%) | 7/20 (35%) | **8/20 (40%)** | 2.40 / **1.80** / **1.80** | 21.36s / 22.70s / 28.57s |
+| 6 | 4/20 (20%) | 5/20 (25%) | **11/20 (55%)** | 2.30 / 2.05 / **1.65** | 74.02s / 76.62s / 137.33s |
 
-Maintainers may prepare local challenge datasets after placing source archives
-under `datasets/sources/`; these files are not part of the public release:
+Two-Trial task results (`mean +/- sample standard deviation`):
 
-```powershell
-.\.venv\Scripts\python.exe scripts\prepare_challenging_datasets.py
-```
+| Task | Random | Optuna | AutoExp LLM | Best |
+| --- | ---: | ---: | ---: | --- |
+| Housing, RMSE-log (minimize) | 0.2459 +/- 0.1046 | 0.1958 +/- 0.1094 | **0.1345 +/- 0.0114** | AutoExp |
+| Covertype, Macro-F1 (maximize) | 0.6932 +/- 0.1781 | **0.7646 +/- 0.0832** | 0.6972 +/- 0.1931 | Optuna |
+| Bank Marketing, AP (maximize) | 0.5334 +/- 0.0140 | 0.5369 +/- 0.0099 | **0.5389 +/- 0.0083** | AutoExp |
+| Online Shoppers, AP (maximize) | 0.6403 +/- 0.0214 | 0.6430 +/- 0.0224 | **0.6453 +/- 0.0235** | AutoExp |
 
-The preparation script writes normalized CSV files and a manifest containing
-the dataset ID, row count, and SHA-256 identity. Generated datasets, uploads,
-experiment outputs, databases, API keys, and logs are intentionally excluded
-from Git.
+Six-Trial task results under the same protocol:
 
-## CLI Reference
+| Task | Random | Optuna | AutoExp LLM |
+| --- | ---: | ---: | ---: |
+| Housing, RMSE-log (minimize) | 0.1522 +/- 0.0246 | 0.1456 +/- 0.0333 | **0.1298 +/- 0.0107** |
+| Covertype, Macro-F1 (maximize) | 0.8120 +/- 0.0223 | 0.8322 +/- 0.0275 | **0.8536 +/- 0.0051** |
+| Bank Marketing, AP (maximize) | 0.5406 +/- 0.0055 | 0.5410 +/- 0.0055 | **0.5411 +/- 0.0055** |
+| Online Shoppers, AP (maximize) | **0.6459 +/- 0.0236** | 0.6457 +/- 0.0234 | 0.6457 +/- 0.0233 |
 
-List all options:
+With two Trials, all policies are sensitive to favorable samples from the bounded search space. At six Trials, AutoExp's paired win rate rises to 55%, with its clearest advantage on Housing and Covertype. Bank Marketing and Online Shoppers remain effectively close. The LLM policy also has higher latency, so the result demonstrates a quality-cost tradeoff rather than universal dominance.
 
-```powershell
-.\.venv\Scripts\python.exe scripts\run_autoexp_demo.py --help
-```
-
-Useful examples:
-
-```powershell
-# Select a registered uploaded dataset
-.\.venv\Scripts\python.exe scripts\run_autoexp_demo.py `
-  --template housing-regression-v1 `
-  --dataset-id my-dataset-id `
-  --planner deterministic
-
-# Store one demonstration in isolated paths
-.\.venv\Scripts\python.exe scripts\run_autoexp_demo.py `
-  --template bank-marketing-classification-v1 `
-  --db workspaces/demo.sqlite3 `
-  --artifact-root workspaces/demo-artifacts `
-  --output workspaces/demo-run
-
-# Resume a persisted run
-.\.venv\Scripts\python.exe scripts\run_autoexp_demo.py `
-  --template housing-regression-v1 `
-  --resume RUN_ID
-```
-
-CLI and Web use the same application service, persisted run model, planners, executors, and LangGraph core. Different outcomes should come from configuration or provider behavior, not from separate orchestration implementations.
-
-## Docker and Background Tasks
-
-### Isolated trial runner
-
-Build the execution image:
-
-```powershell
-docker build -f Dockerfile.autoexp -t autoexp-runner:latest .
-```
-
-`DockerExecutor` creates a disposable container for each gate or experiment process with:
-
-- network disabled by default;
-- a non-root user;
-- a read-only root filesystem and bounded temporary filesystem;
-- all Linux capabilities dropped and `no-new-privileges` enabled;
-- CPU, memory, PID, and timeout limits;
-- immutable template and dataset files mounted read-only;
-- a small allowlist of child-process environment variables.
-
-The LocalExecutor is intended for trusted development and tests. Use Docker for generated or repaired code.
-
-### Web/API stack
-
-Start Streamlit, FastAPI, Redis, and MLflow infrastructure:
-
-```powershell
-docker compose up -d --build
-```
-
-Start the RQ worker on a trusted host that has Docker access:
-
-```powershell
-.\.venv\Scripts\python.exe -m autoexp.server.worker
-```
-
-Services:
-
-| Service | URL | Responsibility |
-| --- | --- | --- |
-| Streamlit | `http://localhost:8501` | Interactive experiment UI |
-| FastAPI | `http://localhost:8000` | Run creation, status, cancellation, and SSE |
-| MLflow | `http://localhost:5000` | Optional experiment comparison UI |
-| Redis | `localhost:6379` | RQ queue transport |
-
-The API exposes `POST /api/runs`, `GET /api/runs`, `GET /api/runs/{run_id}`, `POST /api/runs/{run_id}/cancel`, and `GET /api/runs/{run_id}/events`. Set `AUTOEXP_API_TOKEN` before exposing the service beyond localhost.
-
-The worker is intentionally separate from the Web/API containers so only the trusted worker needs Docker Engine access. The current Compose setup is for local demonstration, not an internet-facing production deployment.
-
-## Reproducible Benchmarks
-
-### Optimization policies
-
-Compare Random, Optuna, and LLM policies with the same registered search space, weak baseline, seed set, and trial budget:
+The tables above record the four-task evaluation snapshot. Once compatible datasets are available locally, the tracked command below reproduces the registered Phase 1 subset: Housing, Covertype, and Bank Marketing.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\run_optimization_benchmark.py `
-  --template housing-regression-v1 `
+  --all-tasks `
   --policies random optuna llm `
-  --seeds 42 43 44 `
-  --trials 5
+  --seeds 42 43 44 45 46 `
+  --trials 6 `
+  --output workspaces\benchmarks-6
 ```
 
-Use `--all-tasks` for all Phase 1 tasks and `--list-tasks` to inspect the catalog. The default comparison is parameter-only: LLM Repair and source context are disabled for fairness. Code optimization must be enabled explicitly with `--allow-code-optimization` and reported as a different experiment scope.
+## Isolation and Safety
 
-Benchmark outputs are written below `workspaces/benchmarks/` as machine-readable JSON and Markdown summaries. They include the baseline, parameter trajectory, best metric, improvement direction, elapsed time, successful/failed trials, dataset identity, and policy metadata.
+AutoExp treats generated code as untrusted input:
 
-### Controlled Repair benchmark
+- template manifests define editable files, allowed dependencies, metrics, parameter policies, and resource limits;
+- structured schemas validate model outputs before they reach the runtime;
+- Repair patches must match the current source and pass the complete validation pipeline;
+- Docker Trials run without network access or API keys, as a non-root user, with a read-only root and bounded resources;
+- fixed evaluators and dataset hashes keep the optimization target independent of generated training code;
+- repeated failures and duplicate rejected patches stop automatic Repair and can route to human review.
 
-Prepare a failure case without calling an external model:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\run_repair_benchmark.py wrong-target-column
-```
-
-Validate a saved structured repair:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\run_repair_benchmark.py `
-  wrong-target-column `
-  --repair RepairSpec.json `
-  --executor docker
-```
-
-A real LLM Repair sends the controlled fixture source and failure logs to the configured provider. It therefore requires explicit authorization:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\run_repair_benchmark.py `
-  wrong-target-column `
-  --llm `
-  --allow-source-egress `
-  --executor docker
-```
-
-A Repair is successful only when its patch passes the file allowlist, context checks, AST/dependency preflight, Pytest, Smoke, and final validation. API success alone is not counted as Repair success.
-
-## Persistence, Tracking, and Reports
-
-SQLite is the source of truth for run history and Agent state. LangGraph checkpoints are stored separately so an interrupted or human-reviewed run can resume without repeating completed trials.
-
-A run may persist:
-
-- the generated `ExperimentSpec` and planner metadata;
-- weak-baseline snapshot and code digest;
-- trial parameters, metrics, gate results, execution metadata, and failures;
-- observations and Action Planner decisions;
-- patches, Repair validation, logs, predictions, and evaluator outputs;
-- deterministic Markdown report and optional AI Run Summary;
-- timeline events and human-review state.
-
-MLflow is a best-effort comparison view. Tracking failures do not invalidate the SQLite run; failed tracking operations are written to a local spool when possible.
-
-Runtime output belongs under `workspaces/` and is ignored by Git. Do not commit local databases, checkpoints, generated reports, raw datasets, model-provider payloads, or experiment artifacts.
-
-## Safety Model
-
-AutoExp treats generated code as untrusted input.
-
-- A template manifest defines mutable files, immutable files, allowed imports, allowed models, parameter policy, metric contract, and resource limits.
-- LLM-proposed values and patches are parsed into structured schemas before use.
-- Repair may only target allowlisted files and must match the current source context.
-- Repeated failure fingerprints and duplicate rejected patches stop automatic Repair.
-- Fixed evaluators and immutable dataset manifests prevent generated training code from redefining success.
-- Docker execution removes network access and API keys from the trial environment.
-- Human review is a persisted state, not an exception that silently restarts the loop.
-- External Repair requires a separate source-egress authorization flag.
-
-These controls reduce risk; they do not make arbitrary generated code safe on an untrusted public service. Keep the worker private, restrict Docker access, require API authentication, and apply infrastructure-level quotas before any public deployment.
+These controls reduce risk but do not make the current stack suitable for untrusted public multi-tenant execution. See [SECURITY.md](SECURITY.md) for reporting and deployment guidance.
 
 ## Repository Layout
 
 ```text
-autoexp/
-  application/                 application service and trial coordination
-  benchmark/                   optimization and Repair benchmarks
-  domain/                      stable experiment contracts
-  evaluation/                  dataset integrity, profiles, and metrics
-  execution/                   LocalExecutor and DockerExecutor
-  graph/                       canonical LangGraph workflow
-  llm/                         OpenAI-compatible gateway and tool schema
-  persistence/                 SQLite and artifact storage
-  planning/                    initial Planner and Action Planner
-  preflight/                   AST and dependency checks
-  repair/                      context collection and Unified Diff handling
-  reporting/                   deterministic and AI reports
-  server/                      FastAPI, task store, RQ worker, and SSE
-  tracking/                    MLflow integration
-  validation/                  Pytest and Smoke gates
-  webui/                       Streamlit application
-
-experiment_templates/          versioned tasks, manifests, tests, and evaluators
-repair_benchmarks/              controlled code-failure fixtures
-scripts/                        CLI, dataset preparation, and formal benchmarks
-tests/                          local maintainer validation; excluded from public Git
-datasets/                       local raw and normalized challenge data; ignored
-workspaces/                     databases, checkpoints, runs, and artifacts; ignored
+autoexp/                 core application, graph, planning, execution, and services
+experiment_templates/    versioned task manifests, training code, and evaluators
+repair_benchmarks/       controlled Code Repair fixtures
+scripts/                 CLI, dataset preparation, and reproducible benchmark commands
+docs/assets/             README media
+workspaces/              local Runs, datasets, databases, and artifacts (ignored)
 ```
-
-`input/` is a historical local fixture and is not part of the AutoExp runtime contract. New data should enter through the Dataset Catalog or the `datasets/` preparation flow.
 
 ## Development
 
-The public repository intentionally excludes maintainer test source, `pytest.ini`,
-and the Pytest workflow. The local development copy may retain additional Pytest
-coverage, while public release checks use linting, package builds, documented
-Smoke/Benchmark commands, and the Docker validation path.
-
-Build and validate a release artifact locally:
-
 ```powershell
-.\.venv\Scripts\python.exe -m build
-.\.venv\Scripts\python.exe -m twine check dist/*
-```
-
-Run the same style checks used by CI:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install ruff==0.7.1 black==24.3.0
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\ruff.exe check autoexp scripts
 .\.venv\Scripts\black.exe --check autoexp scripts
 ```
 
-When adding a feature:
+New templates should provide a manifest, weak baseline, bounded parameter policy, fixed evaluator, validation command, and resource policy. New user-facing capabilities should be exposed through `AutoExpApplicationService` so Web, CLI, API, and Worker behavior remain aligned.
 
-1. Add or update the stable contract in `autoexp/domain`.
-2. Put deterministic mechanics in the owning package.
-3. Use LangGraph nodes only for workflow decisions and state transitions.
-4. Expose the capability through `AutoExpApplicationService` before adding UI code.
-5. Add focused local validation for changed behavior; test-only source is excluded from public Git.
-6. Keep generated outputs, data, secrets, and local state out of Git.
+## Scope
 
-When adding a template, provide a manifest, weak baseline, bounded parameter policy, fixed evaluator, Smoke test, template tests, resource policy, and immutable dataset contract.
-
-## Current Scope and Limitations
-
-AutoExp is ready as a local portfolio and research demonstration, but it is not yet a general-purpose AutoML platform or a production multi-tenant service.
-
-- Dataset files are upload-only in the public release; the repository distributes contracts and provenance, not third-party data.
-- LLM behavior, cost, latency, and availability depend on the configured provider.
-- The deterministic planner is an offline fallback and comparison baseline, not a substitute for LLM reasoning evidence.
-- Text Classification is a compatibility fixture; use the tabular challenge templates for meaningful optimization demonstrations.
-- Background cancellation is persisted, but arbitrary training code may not stop at every possible instruction boundary.
-- Docker provides a strong local isolation boundary, but public deployment still needs authentication, TLS, network policy, secret management, observability, and host-level quotas.
-- Literature retrieval and RAG are intentionally outside this repository's scope.
+AutoExp is an alpha-stage local research and engineering project. It focuses on controlled tabular machine-learning experimentation. It is not a general AutoML platform, a hosted multi-tenant service, or a literature/RAG system. Public deployment still requires production authentication, TLS, network policy, secret management, observability, and host-level quotas.
 
 ## Contributing
 
-Issues and pull requests are welcome. A useful report includes the selected template, planner/executor/tracker modes, operating system, reproduction command, run status, and sanitized logs. Never attach API keys, complete private datasets, or sensitive source code sent to an external provider.
-
-For behavior changes, include tests and explain any changes to schemas, graph routing, template policy, persistence, or executor security.
+Issues and pull requests are welcome. Include the template, planner/executor/tracker modes, operating system, reproduction command, Run status, and sanitized logs. Do not attach API keys, private datasets, or sensitive source code.
 
 ## License
 
-AutoExp is available under the [MIT License](LICENSE).
+AutoExp is released under the [MIT License](LICENSE).
