@@ -7,8 +7,8 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 <p align="center">
-  <a href="https://github.com/HeZhongTian-xjtu/AutoExp/blob/main/README.en.md">English</a> |
-  <a href="https://github.com/HeZhongTian-xjtu/AutoExp/blob/main/README.md">中文</a>
+  <a href="https://github.com/HeZhongTian-xjtu/AutoExp/blob/main/README.md">中文</a> |
+  <a href="https://github.com/HeZhongTian-xjtu/AutoExp/blob/main/README.en.md">English</a>
 </p>
 
 <a id="english-documentation"></a>
