@@ -7,8 +7,8 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 <p align="center">
-  <a href="https://github.com/HeZhongTian-xjtu/AutoExp?tab=readme-ov-file#english-documentation">English</a> |
-  <a href="https://github.com/HeZhongTian-xjtu/AutoExp/blob/main/README.zh-CN.md">中文</a>
+  <a href="https://github.com/HeZhongTian-xjtu/AutoExp/blob/main/README.en.md">English</a> |
+  <a href="https://github.com/HeZhongTian-xjtu/AutoExp/blob/main/README.md">中文</a>
 </p>
 
 > 一个可规划、可执行、可迭代、可追溯的机器学习实验 Agent。
